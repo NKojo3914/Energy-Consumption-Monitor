@@ -10,19 +10,24 @@ const handler = NextAuth({
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        const res = await fetch("http://localhost:4000/api/users/login", {
-          method: 'POST',
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: credentials?.email,
-            password: credentials?.password
-          }),
-        });
+        try {
+          const res = await fetch("http://localhost:4000/api/users/login", {
+            method: 'POST',
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: credentials?.email,
+              password: credentials?.password
+            }),
+          });
 
-        const user = await res.json();
-
-        if (res.ok && user) return user;
-        return null;
+          if (!res.ok) return null;
+          const user = await res.json();
+          if (user) return user;
+          return null;
+        } catch (err) {
+          // Optionally log error
+          return null;
+        }
       }
     }),
   ],
@@ -38,7 +43,7 @@ const handler = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      session.user = token.user;
+      session.user = token.user as typeof session.user;
       return session;
     },
   },

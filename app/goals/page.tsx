@@ -1,6 +1,3 @@
-// Cleaned and complete working page.tsx for Next.js goals route
-// Location: app/goals/page.tsx
-
 'use client';
 
 import { useEffect, useState } from 'react';
