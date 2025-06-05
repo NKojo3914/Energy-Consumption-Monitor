@@ -7,9 +7,9 @@ import { useEffect, useState } from 'react';
 const API_BASE = 'http://localhost:4000/api/readings';
 
 export default function ReadingsPage() {
-  const [readings, setReadings] = useState([]);
+  const [readings, setReadings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadReadings() {
@@ -19,7 +19,7 @@ export default function ReadingsPage() {
         const data = await res.json();
         setReadings(data);
       } catch (err) {
-        setError(err.message);
+        setError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
       }

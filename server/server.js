@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 require('dotenv').config();
+const auth = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -11,9 +12,9 @@ app.use(morgan('dev'));
 app.use(express.json());
 
 // Sample route
-app.use('/api/readings', require('./routes/readings'));
-app.use('/api/devices', require('./routes/devices'));
-app.use('/api/goals', require('./routes/goals'));
+app.use('/api/readings', auth, require('./routes/reading'));
+app.use('/api/devices', auth, require('./routes/devices'));
+app.use('/api/goals', auth, require('./routes/goals'));
 app.use(cors());
 
 app.get('/', (req, res) => {

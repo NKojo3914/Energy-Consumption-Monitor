@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -130,13 +130,28 @@ export default function SettingsPage() {
 
   // Toggle display options
   const toggleDisplayOption = (key: keyof typeof displayOptions) => {
-    setDisplayOptions((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }))
-    toast({
-      title: "Display setting updated",
-      description: `${key} mode ${displayOptions[key] ? "disabled" : "enabled"}`,
+    setDisplayOptions((prev) => {
+      const newValue = !prev[key]
+      // Apply display options to document/body as needed
+      if (typeof window !== "undefined") {
+        if (key === "compact") {
+          document.body.classList.toggle("compact-mode", newValue)
+        }
+        if (key === "animations") {
+          document.body.classList.toggle("no-animations", !newValue)
+        }
+        if (key === "highContrast") {
+          document.body.classList.toggle("high-contrast", newValue)
+        }
+      }
+      toast({
+        title: "Display setting updated",
+        description: `${key} mode ${newValue ? "enabled" : "disabled"}`,
+      })
+      return {
+        ...prev,
+        [key]: newValue,
+      }
     })
   }
 
@@ -166,19 +181,45 @@ export default function SettingsPage() {
 
   // Handle dark mode toggle
   const handleDarkModeToggle = () => {
-    setDarkMode(!darkMode)
-    toast({
-      title: "Theme updated",
-      description: `Dark mode ${darkMode ? "disabled" : "enabled"}`,
+    setDarkMode((prev) => {
+      const newValue = !prev
+      // Update document class for dark mode
+      if (typeof window !== "undefined") {
+        if (newValue) {
+          document.documentElement.classList.add("dark")
+        } else {
+          document.documentElement.classList.remove("dark")
+        }
+      }
+      toast({
+        title: "Theme updated",
+        description: `Dark mode ${newValue ? "enabled" : "disabled"}`,
+      })
+      return newValue
     })
   }
 
   // Handle color scheme selection
   const handleColorSchemeChange = (scheme: string) => {
     setColorScheme(scheme)
+    // Apply color scheme to document root as CSS variable
+    if (typeof window !== "undefined") {
+      let colorVars: Record<string, string[]> = {
+        blue: ["#3b82f6", "#1e40af", "#1d4ed8"],
+        purple: ["#8b5cf6", "#7c3aed", "#6d28d9"],
+        green: ["#10b981", "#059669", "#047857"],
+      }
+      const root = document.documentElement
+      const colors = colorVars[scheme]
+      if (colors) {
+        root.style.setProperty("--theme-primary", colors[0])
+        root.style.setProperty("--theme-secondary", colors[1])
+        root.style.setProperty("--theme-accent", colors[2])
+      }
+    }
     toast({
       title: "Color scheme updated",
-      description: `${scheme} theme applied`,
+      description: `${scheme.charAt(0).toUpperCase() + scheme.slice(1)} theme applied`,
     })
   }
 
@@ -277,6 +318,48 @@ export default function SettingsPage() {
       description: "Follow the instructions sent to your email to complete setup",
     })
   }
+
+  // --- Appearance Tab Effects ---
+  useEffect(() => {
+    // Dark mode toggle
+    if (darkMode) {
+      document.documentElement.classList.add("dark")
+    } else {
+      document.documentElement.classList.remove("dark")
+    }
+  }, [darkMode])
+
+  useEffect(() => {
+    // Color scheme CSS variables (set HSL values, not hex)
+    const root = document.documentElement
+    if (colorScheme === "blue") {
+      root.style.setProperty("--primary", "217 91% 60%") // blue-500
+      root.style.setProperty("--primary-dark", "221 39% 11%") // blue-900
+      root.style.setProperty("--primary-light", "221 83% 53%") // blue-600
+    } else if (colorScheme === "purple") {
+      root.style.setProperty("--primary", "262 83% 67%") // purple-500
+      root.style.setProperty("--primary-dark", "262 52% 47%") // purple-700
+      root.style.setProperty("--primary-light", "262 95% 76%") // purple-300
+    } else if (colorScheme === "green") {
+      root.style.setProperty("--primary", "158 64% 52%") // green-500
+      root.style.setProperty("--primary-dark", "158 100% 20%") // green-900
+      root.style.setProperty("--primary-light", "158 80% 70%") // green-300
+    }
+  }, [colorScheme])
+
+  useEffect(() => {
+    // Display options: compact, animations, highContrast
+    const body = document.body
+    displayOptions.compact
+      ? body.classList.add("compact-mode")
+      : body.classList.remove("compact-mode")
+    displayOptions.animations
+      ? body.classList.remove("no-animations")
+      : body.classList.add("no-animations")
+    displayOptions.highContrast
+      ? body.classList.add("high-contrast")
+      : body.classList.remove("high-contrast")
+  }, [displayOptions])
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">

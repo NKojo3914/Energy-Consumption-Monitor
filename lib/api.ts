@@ -1,4 +1,3 @@
-import type { Alert } from "@/components/ui/alert"
 // API client for backend communication
 import type {
   User,
@@ -9,7 +8,8 @@ import type {
   PaginatedResponse,
   Report,
   Recommendation,
-} from "./types" // Import necessary types
+  Alert, // <-- import Alert from types
+} from "../types" // <-- fix import path
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
 
@@ -27,9 +27,9 @@ class ApiClient {
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseURL}${endpoint}`
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      ...options.headers,
+      ...options.headers as Record<string, string>,
     }
 
     if (this.token) {
