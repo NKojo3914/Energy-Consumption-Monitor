@@ -5,27 +5,24 @@
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
+import Link from "next/link"
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null); // Clear previous errors
-    const res = await signIn('credentials', {
-      redirect: false,
-      email,
-      password,
-    });
-
-    if (!res || res.error) {
+    const user = await login(email, password);
+    if (!user) {
       setError('Invalid email or password');
       return;
     }
-
     router.push('/goals');
   };
 
@@ -62,7 +59,15 @@ export default function LoginPage() {
         >
           Login
         </button>
+
+        <div className="text-center text-sm">
+          Don&apos;t have an account?{' '}
+          <Link href="/api/auth/register" className="text-blue-600 hover:underline">Register</Link>
+        </div>
       </form>
     </main>
   );
 }
+
+// Example usage in a page/component:
+// const { user, login, register, logout, error, loading } = useAuth()

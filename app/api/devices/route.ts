@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import type { Device } from "@/types"
 
 // Mock data - replace with actual database queries
-const mockDevices: Device[] = [
+let mockDevices: Device[] = [
   {
     id: "1",
     name: "Living Room AC",
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
-
+    mockDevices.push(newDevice)
     return NextResponse.json({
       success: true,
       data: newDevice,

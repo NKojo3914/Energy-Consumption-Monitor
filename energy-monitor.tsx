@@ -8,7 +8,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { useDevices, useRealTimeData } from "@/hooks/use-api"
 
+// Keep mock data
 const hourlyData = [
   { time: "00:00", consumption: 2.4, cost: 0.36 },
   { time: "04:00", consumption: 1.8, cost: 0.27 },
@@ -18,23 +20,45 @@ const hourlyData = [
   { time: "20:00", consumption: 7.2, cost: 1.08 },
 ]
 
-const deviceData = [
+const mockDeviceData = [
   { device: "HVAC", consumption: 45, icon: Home },
   { device: "Lighting", consumption: 15, icon: Lightbulb },
   { device: "Appliances", consumption: 25, icon: Factory },
   { device: "EV Charging", consumption: 15, icon: Car },
 ]
 
-export default function Component() {
-  const [currentUsage, setCurrentUsage] = useState(6.4)
-  const [isOnline, setIsOnline] = useState(true)
+type RealTimeData = {
+  currentUsage: number
+  dailyTotal: number
+  monthlyCost: number
+  efficiency: number
+}
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentUsage((prev) => prev + (Math.random() - 0.5) * 0.2)
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [])
+export default function Component() {
+  const { data: realTime, loading: loadingRealTime } = useRealTimeData() as { data: RealTimeData | null, loading: boolean }
+  const { devices, loading: loadingDevices } = useDevices()
+
+  // Use backend data if available, otherwise fallback to mock data
+  const currentUsage = realTime?.currentUsage ?? 6.4
+  const dailyTotal = realTime?.dailyTotal ?? 127.3
+  const monthlyCost = realTime?.monthlyCost ?? 284.5
+  const efficiency = realTime?.efficiency ?? 87
+
+  const deviceData =
+    devices && devices.length > 0
+      ? devices.map((d: any) => ({
+          device: d.name || d.type,
+          consumption: d.dailyConsumption || 0,
+          icon:
+            d.type === "hvac"
+              ? Home
+              : d.type === "lighting"
+              ? Lightbulb
+              : d.type === "appliance"
+              ? Factory
+              : Car,
+        }))
+      : mockDeviceData
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-white p-6">
@@ -48,9 +72,9 @@ export default function Component() {
             <p className="text-slate-400">Real-time energy consumption tracking</p>
           </div>
           <div className="flex items-center gap-4">
-            <Badge variant={isOnline ? "default" : "destructive"} className="px-3 py-1">
-              <div className={`w-2 h-2 rounded-full mr-2 ${isOnline ? "bg-green-400 animate-pulse" : "bg-red-400"}`} />
-              {isOnline ? "Online" : "Offline"}
+            <Badge variant={true ? "default" : "destructive"} className="px-3 py-1">
+              <div className={`w-2 h-2 rounded-full mr-2 ${true ? "bg-green-400 animate-pulse" : "bg-red-400"}`} />
+              {true ? "Online" : "Offline"}
             </Badge>
             <Button variant="outline" className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10">
               Settings
@@ -82,7 +106,7 @@ export default function Component() {
               <Battery className="h-4 w-4 text-blue-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-blue-400">127.3 kWh</div>
+              <div className="text-3xl font-bold text-blue-400">{dailyTotal.toFixed(1)} kWh</div>
               <div className="flex items-center text-xs text-slate-400 mt-2">
                 <TrendingDown className="h-3 w-3 mr-1 text-red-400" />
                 -5.2% from yesterday
@@ -97,7 +121,7 @@ export default function Component() {
               <div className="text-green-400 font-bold">$</div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-400">$284.50</div>
+              <div className="text-3xl font-bold text-green-400">${monthlyCost.toFixed(2)}</div>
               <div className="flex items-center text-xs text-slate-400 mt-2">
                 <TrendingUp className="h-3 w-3 mr-1 text-green-400" />
                 On track for $340
@@ -112,8 +136,8 @@ export default function Component() {
               <div className="text-purple-400 text-lg font-bold">A+</div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-purple-400">87%</div>
-              <Progress value={87} className="mt-2 h-2" />
+              <div className="text-3xl font-bold text-purple-400">{efficiency}%</div>
+              <Progress value={efficiency} className="mt-2 h-2" />
             </CardContent>
           </Card>
         </div>

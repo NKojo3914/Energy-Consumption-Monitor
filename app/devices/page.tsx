@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { Header } from "@/components/layout/header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -41,123 +41,219 @@ import {
   Plus,
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+import { useDevices } from "@/hooks/use-api"
+import { apiClient } from "@/lib/api"
 
-interface Device {
+// --- Add Device type and initialDevices mock data ---
+type DeviceSettingKey = "temperature" | "brightness" | "speed";
+
+type Device = {
   id: string
   name: string
-  type: string
   room: string
-  power: number
+  type: string
+  icon: React.ElementType
+  color: string
   status: "on" | "off" | "standby" | "error"
   isOnline: boolean
   consumption: number
+  power: number
   efficiency: number
-  schedule?: {
-    enabled: boolean
-    onTime: string
-    offTime: string
-  }
   settings?: {
     temperature?: number
     brightness?: number
     speed?: number
   }
-  icon: any
-  color: string
+  schedule?: {
+    enabled: boolean
+    onTime: string
+    offTime: string
+  }
 }
 
 const initialDevices: Device[] = [
   {
     id: "1",
-    name: "Living Room Thermostat",
-    type: "HVAC",
+    name: "Living Room Light",
     room: "Living Room",
-    power: 3200,
-    status: "on",
-    isOnline: true,
-    consumption: 45,
-    efficiency: 87,
-    settings: { temperature: 72 },
-    schedule: { enabled: true, onTime: "06:00", offTime: "23:00" },
-    icon: Thermometer,
-    color: "text-blue-400",
-  },
-  {
-    id: "2",
-    name: "Kitchen Lights",
     type: "Lighting",
-    room: "Kitchen",
-    power: 240,
+    icon: Lightbulb,
+    color: "text-yellow-400",
     status: "on",
     isOnline: true,
-    consumption: 8,
+    consumption: 0.08,
+    power: 80,
     efficiency: 92,
     settings: { brightness: 80 },
     schedule: { enabled: false, onTime: "18:00", offTime: "23:00" },
-    icon: Lightbulb,
-    color: "text-yellow-400",
   },
   {
-    id: "3",
-    name: "Tesla Model 3",
-    type: "EV Charging",
-    room: "Garage",
-    power: 7200,
-    status: "standby",
-    isOnline: true,
-    consumption: 0,
-    efficiency: 95,
-    schedule: { enabled: true, onTime: "23:00", offTime: "06:00" },
-    icon: Car,
-    color: "text-green-400",
-  },
-  {
-    id: "4",
-    name: "Samsung Smart TV",
-    type: "Entertainment",
-    room: "Living Room",
-    power: 150,
-    status: "standby",
-    isOnline: true,
-    consumption: 2,
-    efficiency: 78,
-    icon: Tv,
-    color: "text-purple-400",
-  },
-  {
-    id: "5",
-    name: "Kitchen Refrigerator",
-    type: "Appliance",
-    room: "Kitchen",
-    power: 180,
-    status: "on",
-    isOnline: false,
-    consumption: 12,
-    efficiency: 85,
-    icon: Refrigerator,
-    color: "text-cyan-400",
-  },
-  {
-    id: "6",
-    name: "Washing Machine",
-    type: "Appliance",
-    room: "Laundry",
-    power: 500,
+    id: "2",
+    name: "Bedroom AC",
+    room: "Bedroom",
+    type: "HVAC",
+    icon: Thermometer,
+    color: "text-blue-400",
     status: "off",
     isOnline: true,
     consumption: 0,
+    power: 1200,
+    efficiency: 85,
+    settings: { temperature: 72 },
+    schedule: { enabled: true, onTime: "21:00", offTime: "07:00" },
+  },
+  {
+    id: "3",
+    name: "Kitchen Fridge",
+    room: "Kitchen",
+    type: "Appliance",
+    icon: Refrigerator,
+    color: "text-cyan-400",
+    status: "on",
+    isOnline: true,
+    consumption: 0.15,
+    power: 150,
     efficiency: 88,
-    settings: { speed: 3 },
-    schedule: { enabled: true, onTime: "22:00", offTime: "23:30" },
+    schedule: { enabled: false, onTime: "00:00", offTime: "00:00" },
+  },
+  {
+    id: "4",
+    name: "Garage Car Charger",
+    room: "Garage",
+    type: "EV",
+    icon: Car,
+    color: "text-green-400",
+    status: "standby",
+    isOnline: false,
+    consumption: 0,
+    power: 7000,
+    efficiency: 80,
+    schedule: { enabled: false, onTime: "00:00", offTime: "00:00" },
+  },
+  {
+    id: "5",
+    name: "Living Room TV",
+    room: "Living Room",
+    type: "Entertainment",
+    icon: Tv,
+    color: "text-purple-400",
+    status: "off",
+    isOnline: true,
+    consumption: 0,
+    power: 120,
+    efficiency: 90,
+    schedule: { enabled: false, onTime: "00:00", offTime: "00:00" },
+  },
+  {
+    id: "6",
+    name: "Laundry Washer",
+    room: "Laundry",
+    type: "Appliance",
     icon: WashingMachine,
-    color: "text-indigo-400",
+    color: "text-blue-300",
+    status: "error",
+    isOnline: false,
+    consumption: 0,
+    power: 500,
+    efficiency: 70,
+    schedule: { enabled: false, onTime: "00:00", offTime: "00:00" },
   },
 ]
+// --- End mock data ---
 
 export default function Devices() {
+  const { devices: backendDevices, loading, error, refetch } = useDevices()
   const [devices, setDevices] = useState<Device[]>(initialDevices)
   const [selectedRoom, setSelectedRoom] = useState<string>("all")
   const [selectedType, setSelectedType] = useState<string>("all")
+  const [useBackend, setUseBackend] = useState(false)
+
+  // Add Device Dialog State
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [form, setForm] = useState({
+    name: "",
+    room: "Living Room",
+    type: "Lighting",
+    power: 60,
+    efficiency: 90,
+    isOnline: true,
+  })
+
+  // On mount, fetch backend devices and merge with mock devices (if needed)
+  // Helper to map backend device type to local Device type
+  function mapBackendDevice(backendDevice: any): Device {
+    // Map icon and color based on type or name (customize as needed)
+    let icon = Lightbulb
+    let color = "text-yellow-400"
+    switch (backendDevice.type) {
+      case "Lighting":
+      case "lighting":
+        icon = Lightbulb
+        color = "text-yellow-400"
+        break
+      case "HVAC":
+      case "hvac":
+        icon = Thermometer
+        color = "text-blue-400"
+        break
+      case "Appliance":
+      case "appliance":
+        if (backendDevice.name?.toLowerCase().includes("fridge")) {
+          icon = Refrigerator
+          color = "text-cyan-400"
+        } else if (backendDevice.name?.toLowerCase().includes("washer")) {
+          icon = WashingMachine
+          color = "text-blue-300"
+        }
+        break
+      case "EV":
+      case "ev":
+        icon = Car
+        color = "text-green-400"
+        break
+      case "Entertainment":
+      case "entertainment":
+        icon = Tv
+        color = "text-purple-400"
+        break
+      default:
+        icon = Lightbulb
+        color = "text-yellow-400"
+    }
+    return {
+      id: backendDevice.id,
+      name: backendDevice.name,
+      room: backendDevice.room ?? backendDevice.location ?? form.room ?? "Unknown",
+      type: backendDevice.type ?? form.type ?? "Lighting",
+      icon,
+      color,
+      status: backendDevice.status === "online" ? "on" : backendDevice.status === "offline" ? "off" : backendDevice.status || (form.isOnline ? "on" : "off"),
+      isOnline: backendDevice.isOnline ?? (backendDevice.status === "online"),
+      consumption: backendDevice.consumption ?? backendDevice.currentPower ?? 0,
+      power: backendDevice.power ?? backendDevice.currentPower ?? form.power ?? 60,
+      efficiency: backendDevice.efficiency ?? form.efficiency ?? 90,
+      settings: backendDevice.settings || (backendDevice.type === "Lighting" || backendDevice.type === "lighting"
+        ? { brightness: 50 }
+        : backendDevice.type === "HVAC" || backendDevice.type === "hvac"
+        ? { temperature: 72 }
+        : undefined),
+      schedule: backendDevice.schedule || { enabled: false, onTime: "00:00", offTime: "00:00" },
+    }
+  }
+
+  useEffect(() => {
+    if (useBackend && backendDevices && backendDevices.length > 0) {
+      setDevices(backendDevices.map(mapBackendDevice))
+    } else if (!useBackend) {
+      setDevices(initialDevices)
+    }
+  }, [backendDevices, useBackend])
+
+  useEffect(() => {
+    if (useBackend) {
+      console.log('Backend devices after refetch:', backendDevices)
+    }
+  }, [backendDevices, useBackend])
 
   const rooms = ["all", ...Array.from(new Set(devices.map((d) => d.room)))]
   const types = ["all", ...Array.from(new Set(devices.map((d) => d.type)))]
@@ -167,46 +263,6 @@ export default function Devices() {
     const typeMatch = selectedType === "all" || device.type === selectedType
     return roomMatch && typeMatch
   })
-
-  const toggleDevice = (deviceId: string) => {
-    setDevices((prev) =>
-      prev.map((device) => {
-        if (device.id === deviceId) {
-          const newStatus = device.status === "on" ? "off" : "on"
-          const newConsumption = newStatus === "on" ? (device.power / 1000) * 0.15 : 0
-
-          toast({
-            title: `${device.name} ${newStatus === "on" ? "turned on" : "turned off"}`,
-            description: `Power consumption: ${newConsumption.toFixed(1)} kW`,
-          })
-
-          return {
-            ...device,
-            status: newStatus,
-            consumption: newConsumption,
-          }
-        }
-        return device
-      }),
-    )
-  }
-
-  const updateDeviceSetting = (deviceId: string, setting: string, value: number) => {
-    setDevices((prev) =>
-      prev.map((device) => {
-        if (device.id === deviceId) {
-          return {
-            ...device,
-            settings: {
-              ...device.settings,
-              [setting]: value,
-            },
-          }
-        }
-        return device
-      }),
-    )
-  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -234,6 +290,68 @@ export default function Devices() {
   const activeDevices = devices.filter((d) => d.status === "on").length
   const offlineDevices = devices.filter((d) => !d.isOnline).length
 
+  // Add device handler
+  const handleAddDevice = async (deviceData: any) => {
+    try {
+      await apiClient.createDevice(deviceData)
+      refetch()
+    } catch (err) {
+      // handle error
+    }
+  }
+
+  // Update device handler
+  const handleUpdateDevice = async (id: string, data: any) => {
+    try {
+      await apiClient.updateDevice(id, data)
+      refetch()
+    } catch (err) {
+      // handle error
+    }
+  }
+
+  // Delete device handler
+  const handleDeleteDevice = async (id: string) => {
+    try {
+      await apiClient.deleteDevice(id)
+      refetch()
+    } catch (err) {
+      // handle error
+    }
+  }
+
+  // --- Add updateDeviceSetting and toggleDevice helpers ---
+  function updateDeviceSetting(id: string, key: DeviceSettingKey, value: number) {
+    setDevices((prev) =>
+      prev.map((d) =>
+        d.id === id
+          ? {
+              ...d,
+              settings: { ...d.settings, [key]: value },
+            }
+          : d,
+      ),
+    )
+  }
+
+  function toggleDevice(id: string) {
+    setDevices((prev) =>
+      prev.map((d) =>
+        d.id === id
+          ? {
+              ...d,
+              status: d.status === "on" ? "off" : "on",
+              consumption: d.status === "on" ? 0 : d.power / 1000,
+            }
+          : d,
+      ),
+    )
+  }
+  // --- End helpers ---
+
+  if (loading) return <div className="p-6">Loading devices...</div>
+  if (error) return <div className="p-6 text-red-500">Error: {error}</div>
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900">
       <Sidebar />
@@ -248,10 +366,142 @@ export default function Devices() {
               </h1>
               <p className="text-slate-400 mt-1">Monitor and control your smart devices</p>
             </div>
-            <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Device
-            </Button>
+            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Device
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="glass-card max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Add New Device</DialogTitle>
+                  <DialogDescription>Fill in the details below to add a device.</DialogDescription>
+                </DialogHeader>
+                <form
+                  className="space-y-4"
+                  onSubmit={async (e) => {
+                    e.preventDefault()
+                    if (useBackend) {
+                      // Only send backend-relevant fields
+                      const backendDeviceData = {
+                        name: form.name,
+                        room: form.room,
+                        type: form.type,
+                        power: form.power,
+                        efficiency: form.efficiency,
+                        isOnline: form.isOnline,
+                      }
+                      await handleAddDevice(backendDeviceData)
+                      // Wait for refetch to complete before closing dialog and resetting form
+                      await refetch()
+                      setAddDialogOpen(false)
+                      setForm({
+                        name: "",
+                        room: "Living Room",
+                        type: "Lighting",
+                        power: 60,
+                        efficiency: 90,
+                        isOnline: true,
+                      })
+                    } else {
+                      const newDevice: Device = {
+                        id: Date.now().toString(),
+                        name: form.name,
+                        room: form.room,
+                        type: form.type,
+                        icon: Lightbulb, // You can improve this by mapping type to icon
+                        color: "text-yellow-400",
+                        status: "off",
+                        isOnline: form.isOnline,
+                        consumption: 0,
+                        power: form.power,
+                        efficiency: form.efficiency,
+                        settings: { brightness: 50 },
+                        schedule: { enabled: false, onTime: "00:00", offTime: "00:00" },
+                      }
+                      setDevices((prev) => [...prev, newDevice])
+                      toast({ title: "Device added", description: `${form.name} has been added.` })
+                      setAddDialogOpen(false)
+                      setForm({
+                        name: "",
+                        room: "Living Room",
+                        type: "Lighting",
+                        power: 60,
+                        efficiency: 90,
+                        isOnline: true,
+                      })
+                    }
+                  }}
+                >
+                  <div>
+                    <Label htmlFor="device-name">Name</Label>
+                    <Input
+                      id="device-name"
+                      value={form.name}
+                      onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="device-room">Room</Label>
+                    <Input
+                      id="device-room"
+                      value={form.room}
+                      onChange={e => setForm(f => ({ ...f, room: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="device-type">Type</Label>
+                    <select
+                      id="device-type"
+                      className="w-full rounded-md bg-slate-800 border border-slate-600 text-sm p-2"
+                      value={form.type}
+                      onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                    >
+                      <option value="Lighting">Lighting</option>
+                      <option value="HVAC">HVAC</option>
+                      <option value="Appliance">Appliance</option>
+                      <option value="EV">EV</option>
+                      <option value="Entertainment">Entertainment</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="device-power">Power (W)</Label>
+                    <Input
+                      id="device-power"
+                      type="number"
+                      min={1}
+                      value={form.power}
+                      onChange={e => setForm(f => ({ ...f, power: Number(e.target.value) }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="device-efficiency">Efficiency (%)</Label>
+                    <Input
+                      id="device-efficiency"
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={form.efficiency}
+                      onChange={e => setForm(f => ({ ...f, efficiency: Number(e.target.value) }))}
+                      required
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="device-online"
+                      checked={form.isOnline}
+                      onCheckedChange={checked => setForm(f => ({ ...f, isOnline: checked }))}
+                    />
+                    <Label htmlFor="device-online">Online</Label>
+                  </div>
+                  <Button type="submit" className="w-full mt-2 bg-cyan-600 hover:bg-cyan-700">Add Device</Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Overview Stats */}
@@ -305,6 +555,18 @@ export default function Devices() {
                 <div className="text-xs text-slate-400 mt-1">Across all devices</div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Add toggle for backend vs mock devices above filters */}
+          <div className="flex items-center gap-4 mb-4">
+            <Label htmlFor="backend-toggle">Use Backend Devices</Label>
+            <Switch
+              id="backend-toggle"
+              checked={useBackend}
+              onCheckedChange={setUseBackend}
+              className="ml-2"
+            />
+            <span className="text-xs text-slate-400">{useBackend ? "Backend" : "Mock"}</span>
           </div>
 
           {/* Filters */}
@@ -377,12 +639,12 @@ export default function Devices() {
                           </DialogHeader>
                           <div className="space-y-6 py-4">
                             {/* Device Controls */}
-                            {device.settings?.temperature && (
+                            {device.settings?.temperature !== undefined && (
                               <div className="space-y-2">
                                 <Label>Temperature: {device.settings.temperature}°F</Label>
                                 <Slider
-                                  value={[device.settings.temperature]}
-                                  onValueChange={([value]) => updateDeviceSetting(device.id, "temperature", value)}
+                                  value={[device.settings.temperature ?? 70]}
+                                  onValueChange={(value) => updateDeviceSetting(device.id, "temperature", value[0])}
                                   max={85}
                                   min={60}
                                   step={1}
@@ -391,12 +653,12 @@ export default function Devices() {
                               </div>
                             )}
 
-                            {device.settings?.brightness && (
+                            {device.settings?.brightness !== undefined && (
                               <div className="space-y-2">
                                 <Label>Brightness: {device.settings.brightness}%</Label>
                                 <Slider
-                                  value={[device.settings.brightness]}
-                                  onValueChange={([value]) => updateDeviceSetting(device.id, "brightness", value)}
+                                  value={[device.settings.brightness ?? 50]}
+                                  onValueChange={(value) => updateDeviceSetting(device.id, "brightness", value[0])}
                                   max={100}
                                   min={0}
                                   step={5}
@@ -405,12 +667,12 @@ export default function Devices() {
                               </div>
                             )}
 
-                            {device.settings?.speed && (
+                            {device.settings?.speed !== undefined && (
                               <div className="space-y-2">
                                 <Label>Speed Level: {device.settings.speed}</Label>
                                 <Slider
-                                  value={[device.settings.speed]}
-                                  onValueChange={([value]) => updateDeviceSetting(device.id, "speed", value)}
+                                  value={[device.settings.speed ?? 1]}
+                                  onValueChange={(value) => updateDeviceSetting(device.id, "speed", value[0])}
                                   max={5}
                                   min={1}
                                   step={1}
@@ -480,6 +742,22 @@ export default function Devices() {
                           </div>
                         </DialogContent>
                       </Dialog>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Remove device"
+                        onClick={async () => {
+                          setDevices((prev) => prev.filter((d) => d.id !== device.id))
+                          toast({ title: "Device removed", description: `${device.name} has been removed.` })
+                          if (useBackend) {
+                            await handleDeleteDevice(device.id)
+                          }
+                        }}
+                      >
+                        <span className="sr-only">Remove</span>
+                        ×
+                      </Button>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -536,12 +814,24 @@ export default function Devices() {
                   variant="outline"
                   className="h-16 flex-col gap-2"
                   onClick={() => {
-                    setDevices((prev) => prev.map((d) => ({ ...d, status: "off" as const, consumption: 0 })))
-                    toast({ title: "All devices turned off", description: "Energy saving mode activated" })
+                    const allOn = devices.every((d) => d.status === "on")
+                    setDevices((prev) =>
+                      prev.map((d) =>
+                        allOn
+                          ? { ...d, status: "off" as const, consumption: 0 }
+                          : { ...d, status: "on" as const, consumption: d.power / 1000 }
+                      )
+                    )
+                    toast({
+                      title: allOn ? "All devices turned off" : "All devices turned on",
+                      description: allOn
+                        ? "Energy saving mode activated"
+                        : "All devices are now powered on",
+                    })
                   }}
                 >
                   <Power className="w-5 h-5" />
-                  <span className="text-xs">All Off</span>
+                  <span className="text-xs">{devices.every((d) => d.status === "on") ? "All Off" : "All On"}</span>
                 </Button>
 
                 <Button
