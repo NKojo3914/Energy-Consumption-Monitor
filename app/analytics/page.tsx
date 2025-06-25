@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useAuth } from "@/hooks/use-auth"
+import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/layout/sidebar"
 import { Header } from "@/components/layout/header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -88,6 +90,9 @@ const peakDemandData = [
 ]
 
 export default function Analytics() {
+  const { user, loading, initialLoading } = useAuth()
+  const router = useRouter()
+
   const [timeRange, setTimeRange] = useState("12months")
   const [selectedMetric, setSelectedMetric] = useState("consumption")
 

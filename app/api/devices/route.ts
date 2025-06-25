@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import type { Device } from "@/types"
+import { requireAuth } from "../require-auth"
 
 // Mock data - replace with actual database queries
 let mockDevices: Device[] = [
@@ -26,7 +27,10 @@ let mockDevices: Device[] = [
   // Add more mock devices...
 ]
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const user = requireAuth(request)
+  if ((user as Response)?.status === 401) return user
+
   try {
     // TODO: Fetch devices from database
     return NextResponse.json({
@@ -39,6 +43,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const user = requireAuth(request)
+  if ((user as Response)?.status === 401) return user
+
   try {
     const body = await request.json()
 

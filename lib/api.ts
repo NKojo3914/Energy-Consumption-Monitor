@@ -11,7 +11,8 @@ import type {
   Alert, // <-- import Alert from types
 } from "../types" // <-- fix import path
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+// Set API_BASE_URL to Express backend, not Next.js
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000/api"
 
 class ApiClient {
   private baseURL: string
@@ -72,6 +73,10 @@ class ApiClient {
     }
   }
 
+  public setToken(token: string | null) {
+    this.token = token
+  }
+
   // User methods
   async getProfile(): Promise<User> {
     return this.request<User>("/user/profile")
@@ -84,9 +89,23 @@ class ApiClient {
     })
   }
 
+  async deleteAccount() {
+    return this.request<{ success: boolean; message: string }>("/user/delete", { method: "DELETE" })
+  }
+
   // Device methods
   async getDevices(): Promise<Device[]> {
-    return this.request<Device[]>("/devices")
+    // Get userId from token if available
+    let userId: string | undefined = undefined;
+    if (this.token) {
+      try {
+        // Decode JWT to get userId (payload is base64-encoded JSON)
+        const payload = JSON.parse(atob(this.token.split('.')[1]));
+        userId = payload.id;
+      } catch (e) {}
+    }
+    const query = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+    return this.request<Device[]>(`/devices${query}`);
   }
 
   async getDevice(id: string): Promise<Device> {

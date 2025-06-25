@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useAuth } from "@/hooks/use-auth"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -134,6 +136,14 @@ const alertRules = [
 ]
 
 export default function AlertsPage() {
+  const { user, loading } = useAuth()
+  const router = useRouter()
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/alerts")
+    }
+  }, [user, loading, router])
+
   const [selectedFilter, setSelectedFilter] = useState("all")
   const [searchTerm, setSearchTerm] = useState("")
 

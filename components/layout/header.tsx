@@ -15,9 +15,13 @@ import {
 import { MobileSidebar } from "./sidebar"
 import { Bell, Moon, Sun, User, LogOut, Wifi, WifiOff } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useAuth } from "@/hooks/use-auth"
+import { useRouter } from "next/navigation"
 
 export function Header() {
   const { theme, setTheme } = useTheme()
+  const { user, logout } = useAuth()
+  const router = useRouter()
   const [isOnline, setIsOnline] = useState(true)
   const [notifications, setNotifications] = useState(3)
 
@@ -59,24 +63,24 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src="/placeholder.svg?height=32&width=32" alt="User" />
-                  <AvatarFallback>JD</AvatarFallback>
+                  <AvatarImage src={user?.avatar || "/placeholder.svg?height=32&width=32"} alt="User" />
+                  <AvatarFallback>{user?.name ? user.name.split(" ").map(n => n[0]).join("") : "U"}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">John Doe</p>
-                  <p className="text-xs leading-none text-muted-foreground">john.doe@example.com</p>
+                  <p className="text-sm font-medium leading-none">{user?.name || "User"}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{user?.email || "user@example.com"}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/settings")}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Profile</span>
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { logout(); router.push("/login") }}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>

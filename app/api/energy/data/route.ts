@@ -1,7 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
 import type { EnergyData } from "@/types"
+import { requireAuth } from "../../require-auth"
 
 export async function GET(request: NextRequest) {
+  const user = requireAuth(request)
+  if ((user as Response)?.status === 401) return user
+
   try {
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get("startDate")

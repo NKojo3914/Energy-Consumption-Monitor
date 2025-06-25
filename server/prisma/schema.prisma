@@ -17,7 +17,12 @@ model User {
   updatedAt DateTime @updatedAt
   readings Reading[]
   devices  Device[]
-  goals    Goal[]
+  // New fields for auth flows
+  resetToken      String?   // Password reset token
+  resetTokenExpiry DateTime?
+  emailVerified   Boolean   @default(false)
+  verifyToken     String?
+  verifyTokenExpiry DateTime?
 }
 
 model Reading {
@@ -36,15 +41,6 @@ model Device {
   status    String   @default("offline")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-}
-
-model Goal {
-  id        String   @id @default(cuid())
-  targetKwh Float
-  startDate DateTime
-  endDate   DateTime
   userId    String
   user      User     @relation(fields: [userId], references: [id])
 }

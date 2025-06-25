@@ -1,6 +1,10 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { requireAuth } from "../../require-auth"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const user = requireAuth(request)
+  if ((user as Response)?.status === 401) return user
+
   try {
     // TODO: Fetch real-time data from your energy monitoring system
     // This could be from IoT devices, smart meters, etc.

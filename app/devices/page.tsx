@@ -43,6 +43,8 @@ import {
 import { toast } from "@/hooks/use-toast"
 import { useDevices } from "@/hooks/use-api"
 import { apiClient } from "@/lib/api"
+import { useAuth } from "@/hooks/use-auth"
+import { useRouter } from "next/navigation"
 
 // --- Add Device type and initialDevices mock data ---
 type DeviceSettingKey = "temperature" | "brightness" | "speed";
@@ -162,7 +164,10 @@ const initialDevices: Device[] = [
 // --- End mock data ---
 
 export default function Devices() {
-  const { devices: backendDevices, loading, error, refetch } = useDevices()
+  const { user, loading, initialLoading } = useAuth()
+  const router = useRouter()
+
+  const { devices: backendDevices, loading: devicesLoading, error, refetch } = useDevices()
   const [devices, setDevices] = useState<Device[]>(initialDevices)
   const [selectedRoom, setSelectedRoom] = useState<string>("all")
   const [selectedType, setSelectedType] = useState<string>("all")
@@ -349,7 +354,7 @@ export default function Devices() {
   }
   // --- End helpers ---
 
-  if (loading) return <div className="p-6">Loading devices...</div>
+  if (devicesLoading) return <div className="p-6">Loading devices...</div>
   if (error) return <div className="p-6 text-red-500">Error: {error}</div>
 
   return (
